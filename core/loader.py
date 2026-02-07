@@ -1,5 +1,6 @@
 import importlib
 import sys
+import os
 
 class ModuleLoader:
     @staticmethod
@@ -15,3 +16,7 @@ class ModuleLoader:
         except Exception as e:
             print(f"动态加载模块 {module_name} 失败: {e}")
             return None
+def get_resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)

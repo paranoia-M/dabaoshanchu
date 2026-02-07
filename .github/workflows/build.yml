@@ -1,8 +1,8 @@
-name: Build Windows Installer
+name: Build IT Supervision Platform
 
 on:
   push:
-    branches: [ "main" ] # 只有 push 到 main 分支才触发
+    branches: [ "main" ] # 只有 push 到 main 分支才触发构建
   pull_request:
     branches: [ "main" ]
 
@@ -12,34 +12,39 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4 # 升级到 v4
+      uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v5 # 升级到 v5
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
-        cache: 'pip' # 自动缓存依赖，加快构建速度
+        cache: 'pip'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install PyQt6 pyinstaller watchdog pandas
+        # 安装 PyQt6 以及你在各个逻辑模块中用到的库（如 cryptography 用于哈希，pandas 用于数据处理）
+        pip install PyQt6 pyinstaller cryptography pandas
 
     - name: Build EXE with PyInstaller
       run: |
-        # 使用 powershell 语法打包
-        # --collect-submodules modules: 强制收集 modules 文件夹下的所有动态子模块
-        # --add-data: 确保资源文件被打包进 EXE 内部
+        # 关键配置说明：
+        # --noconsole: 运行时不显示黑窗口
+        # --onefile: 打包成单个可执行文件
+        # --collect-submodules modules: 强制包含动态加载的业务模块
+        # --add-data "modules;modules": 将业务模块文件夹打包进根目录，确保 importlib 能找到
+        # --add-data "core;core": 包含核心算法引擎
+        # --add-data "ui;ui": 包含通用 UI 组件和样式
         pyinstaller --noconsole --onefile `
         --collect-submodules modules `
         --add-data "modules;modules" `
         --add-data "core;core" `
-        --add-data "styles;styles" `
-        --name "DigitalCultureSystem" `
+        --add-data "ui;ui" `
+        --name "IT_Supervision_Platform" `
         main.py
 
     - name: Create Installer with Inno Setup
-      # 检查是否存在 .iss 脚本，存在则执行，不存在则跳过
+      # 如果你有 .iss 脚本则执行，否则跳过
       shell: powershell
       run: |
         if (Test-Path "installer_script.iss") {
@@ -49,16 +54,16 @@ jobs:
         }
 
     - name: Upload Executable Artifact
-      uses: actions/upload-artifact@v4 # 核心修复点：升级到 v4
+      uses: actions/upload-artifact@v4
       with:
-        name: Digital-Culture-System-EXE
-        path: dist/DigitalCultureSystem.exe
-        retention-days: 5 # 设置保留天数
+        name: IT-Supervision-Platform-EXE
+        path: dist/IT_Supervision_Platform.exe
+        retention-days: 5
 
     - name: Upload Setup Artifact (If exists)
       if: always()
-      uses: actions/upload-artifact@v4 # 核心修复点：升级到 v4
+      uses: actions/upload-artifact@v4
       with:
-        name: Digital-Culture-System-Setup
-        path: dist/DigitalCultureSystem_Setup.exe
+        name: IT-Supervision-Platform-Setup
+        path: dist/IT_Supervision_Platform_Setup.exe
         if-no-files-found: ignore
