@@ -2,10 +2,11 @@ import sys
 import time
 import uuid
 import platform
+import os
 from PyQt6.QtWidgets import (QApplication, QDialog, QVBoxLayout, QLineEdit, 
                              QPushButton, QMessageBox, QLabel, QFrame, 
                              QGraphicsDropShadowEffect)
-from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QRect, QTimer
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QFont
 from core.auth_service import AuthService
 from main_window import MainWindow
@@ -14,46 +15,38 @@ class LoginDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.auth = AuthService()
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint) # 去掉原生边框
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground) # 背景透明
+        # 修复：在Windows打包环境下，去掉透明背景属性，防止黑色块出现
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint) 
         self.setFixedSize(450, 550)
+        
+        # 修复：显式设置对话框背景色
+        self.setStyleSheet("background-color: #0f172a;") 
         self.init_ui()
         self.pre_fill_defaults()
 
     def init_ui(self):
-        # 外层容器（用于实现圆角和阴影）
         self.main_frame = QFrame(self)
-        self.main_frame.setGeometry(10, 10, 430, 530)
+        self.main_frame.setGeometry(0, 0, 450, 550)
         self.main_frame.setStyleSheet("""
             QFrame {
                 background-color: #1e293b;
-                border-radius: 20px;
+                border-radius: 0px;
                 border: 1px solid #334155;
             }
         """)
         
-        # 阴影效果
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(25)
-        shadow.setXOffset(0)
-        shadow.setYOffset(0)
-        shadow.setColor(QColor(0, 0, 0, 180))
-        self.main_frame.setGraphicsEffect(shadow)
-
         layout = QVBoxLayout(self.main_frame)
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(20)
 
-        # 标题区
         title_label = QLabel("IT设备统一监管维护平台")
-        title_label.setStyleSheet("color: #f8fafc; font-size: 24px; font-weight: bold; border: none;")
+        title_label.setStyleSheet("color: #f8fafc; font-size: 24px; font-weight: bold; border: none; background: transparent;")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        subtitle = QLabel("")
-        subtitle.setStyleSheet("color: #94a3b8; font-size: 12px; border: none;")
+        subtitle = QLabel("Unified Supervision & Maintenance")
+        subtitle.setStyleSheet("color: #94a3b8; font-size: 12px; border: none; background: transparent;")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # 输入框样式
         input_style = """
             QLineEdit {
                 background-color: #0f172a;
@@ -62,10 +55,6 @@ class LoginDialog(QDialog):
                 padding: 12px;
                 color: #f1f2f6;
                 font-size: 14px;
-            }
-            QLineEdit:focus {
-                border: 2px solid #3b82f6;
-                background-color: #1e293b;
             }
         """
 
@@ -78,11 +67,9 @@ class LoginDialog(QDialog):
         self.pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.pwd_input.setStyleSheet(input_style)
 
-        # 环境预检显示
         self.status_label = QLabel("等待环境安全扫描...")
-        self.status_label.setStyleSheet("color: #64748b; font-size: 11px; border: none;")
+        self.status_label.setStyleSheet("color: #64748b; font-size: 11px; border: none; background: transparent;")
 
-        # 登录按钮
         self.login_btn = QPushButton("验证身份并接入系统")
         self.login_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.login_btn.setStyleSheet("""
@@ -94,21 +81,9 @@ class LoginDialog(QDialog):
                 font-size: 16px;
                 font-weight: bold;
             }
-            QPushButton:hover {
-                background-color: #3b82f6;
-            }
-            QPushButton:pressed {
-                background-color: #1d4ed8;
-            }
+            QPushButton:hover { background-color: #3b82f6; }
         """)
-        self.login_btn.clicked.connect(self.animate_login)
-
-        # 退出按钮
-        self.close_btn = QPushButton("×")
-        self.close_btn.setParent(self.main_frame)
-        self.close_btn.setGeometry(390, 10, 30, 30)
-        self.close_btn.setStyleSheet("color: #94a3b8; font-size: 20px; border: none; background: none;")
-        self.close_btn.clicked.connect(self.close)
+        self.login_btn.clicked.connect(self.do_login)
 
         layout.addWidget(title_label)
         layout.addWidget(subtitle)
@@ -116,54 +91,3 @@ class LoginDialog(QDialog):
         layout.addWidget(self.user_input)
         layout.addWidget(self.pwd_input)
         layout.addWidget(self.status_label)
-        layout.addStretch()
-        layout.addWidget(self.login_btn)
-
-        # 启动环境指纹扫描模拟
-        QTimer.singleShot(1000, self.perform_env_check)
-
-    def pre_fill_defaults(self):
-        """默认填充账号密码以便快速测试"""
-        self.user_input.setText("admin")
-        self.pwd_input.setText("admin123")
-
-    def perform_env_check(self):
-        """核心逻辑：环境指纹审计"""
-        hw_id = uuid.uuid1().hex[:12].upper()
-        sys_info = f"{platform.system()} {platform.machine()}"
-        self.status_label.setText(f"终端指纹: {hw_id} | 环境状态: 正常")
-        self.status_label.setStyleSheet("color: #10b981; font-size: 11px; border: none;")
-
-    def animate_login(self):
-        """登录按钮动画逻辑"""
-        original_geo = self.login_btn.geometry()
-        self.login_btn.setText("正在建立加密链路...")
-        self.do_login()
-
-    def do_login(self):
-        # 增加安全延迟，模拟复杂验证过程
-        QApplication.processEvents()
-        time.sleep(0.5) 
-        
-        res = self.auth.authenticate(self.user_input.text(), self.pwd_input.text())
-        if res:
-            # 逻辑：注入会话令牌
-            res['token'] = uuid.uuid4().hex
-            self.user_info = res
-            self.accept()
-        else:
-            self.login_btn.setText("验证身份并接入系统")
-            QMessageBox.critical(self, "鉴权中心", "拦截到非法访问请求：凭据不匹配")
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    
-    # 设置全局字体
-    font = QFont("Microsoft YaHei", 10)
-    app.setFont(font)
-    
-    login = LoginDialog()
-    if login.exec() == QDialog.DialogCode.Accepted:
-        main_win = MainWindow(login.user_info)
-        main_win.show()
-        sys.exit(app.exec())
