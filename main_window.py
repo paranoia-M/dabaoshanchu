@@ -6,7 +6,6 @@ from core.loader import ModuleLoader
 class NavButton(QPushButton):
     def __init__(self, text, is_active=False):
         super().__init__(text)
-        self.setCheckable(True)
         self.setFixedHeight(50)
         self.update_style(is_active)
 
@@ -24,11 +23,12 @@ class MainWindow(QMainWindow):
         self.resize(1200, 800)
         self.setStyleSheet("background-color: #0f172a;")
 
+        # 核心修复：确保这里的 key 与你 modules 目录下的文件名完全一致
         self.menu_map = {
             "资产盘点核心": "asset_inventory",
             "实时性能监控": "performance",
             "故障预测诊断": "fault_diag",
-            "维护任务调度": "scheduling",
+            "维护任务调度": "task_scheduling", # 对应截图中的 task_scheduling.py
             "能耗优化管理": "energy_save",
             "容量规划分析": "capacity_plan",
             "拓扑发现引擎": "topology",
@@ -41,6 +41,7 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         main_layout = QHBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -52,8 +53,8 @@ class MainWindow(QMainWindow):
         sidebar.setStyleSheet("background-color: #1e293b; border-right: 1px solid #334155;")
         sidebar_layout = QVBoxLayout(sidebar)
         
-        logo = QLabel("ITS PLATFORM")
-        logo.setStyleSheet("color: #3b82f6; font-size: 20px; font-weight: bold; margin: 20px; border: none;")
+        logo = QLabel("")
+        logo.setStyleSheet("color: #3b82f6; font-size: 20px; font-weight: bold; margin: 20px; border: none; background: transparent;")
         sidebar_layout.addWidget(logo)
 
         for name, file_name in self.menu_map.items():
@@ -63,9 +64,7 @@ class MainWindow(QMainWindow):
             sidebar_layout.addStretch(1)
             self.buttons.append(btn)
 
-        # 内容区
         self.container = QStackedWidget()
-        # 修复：内容区必须有显式背景色，防止黑色穿透
         self.container.setStyleSheet("background-color: #f8fafc; border-top-left-radius: 20px;")
 
         main_layout.addWidget(sidebar)
@@ -77,10 +76,8 @@ class MainWindow(QMainWindow):
         for btn in self.buttons:
             btn.update_style(btn == clicked_btn)
         
-        # 核心加载逻辑修复
         widget = ModuleLoader.load(file_name)
         if widget:
-            # 修复：强制注入样式，防止子模块在EXE中渲染失败
             widget.setStyleSheet("background-color: #f8fafc; color: #1e293b;")
             if self.container.count() > 0:
                 old_w = self.container.currentWidget()

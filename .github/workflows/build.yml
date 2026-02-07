@@ -3,13 +3,10 @@ name: Build IT Supervision Platform
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -26,14 +23,12 @@ jobs:
 
     - name: Build EXE with PyInstaller
       run: |
-        # 修复点：显式列出所有 hidden-imports 确保动态模块被打包
-        # 修复点：使用 --add-data 确保文件夹结构在运行时解压到 _MEIPASS
         pyinstaller --noconsole --onefile `
         --collect-submodules modules `
         --hidden-import "modules.asset_inventory" `
         --hidden-import "modules.performance" `
         --hidden-import "modules.fault_diag" `
-        --hidden-import "modules.scheduling" `
+        --hidden-import "modules.task_scheduling" `
         --hidden-import "modules.energy_save" `
         --hidden-import "modules.capacity_plan" `
         --hidden-import "modules.topology" `
