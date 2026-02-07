@@ -1,0 +1,64 @@
+name: Build Windows Installer
+
+on:
+  push:
+    branches: [ "main" ] # 只有 push 到 main 分支才触发
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4 # 升级到 v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5 # 升级到 v5
+      with:
+        python-version: '3.10'
+        cache: 'pip' # 自动缓存依赖，加快构建速度
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install PyQt6 pyinstaller watchdog pandas
+
+    - name: Build EXE with PyInstaller
+      run: |
+        # 使用 powershell 语法打包
+        # --collect-submodules modules: 强制收集 modules 文件夹下的所有动态子模块
+        # --add-data: 确保资源文件被打包进 EXE 内部
+        pyinstaller --noconsole --onefile `
+        --collect-submodules modules `
+        --add-data "modules;modules" `
+        --add-data "core;core" `
+        --add-data "styles;styles" `
+        --name "DigitalCultureSystem" `
+        main.py
+
+    - name: Create Installer with Inno Setup
+      # 检查是否存在 .iss 脚本，存在则执行，不存在则跳过
+      shell: powershell
+      run: |
+        if (Test-Path "installer_script.iss") {
+          iscc /Q installer_script.iss
+        } else {
+          Write-Host "installer_script.iss not found, skipping setup creation."
+        }
+
+    - name: Upload Executable Artifact
+      uses: actions/upload-artifact@v4 # 核心修复点：升级到 v4
+      with:
+        name: Digital-Culture-System-EXE
+        path: dist/DigitalCultureSystem.exe
+        retention-days: 5 # 设置保留天数
+
+    - name: Upload Setup Artifact (If exists)
+      if: always()
+      uses: actions/upload-artifact@v4 # 核心修复点：升级到 v4
+      with:
+        name: Digital-Culture-System-Setup
+        path: dist/DigitalCultureSystem_Setup.exe
+        if-no-files-found: ignore
